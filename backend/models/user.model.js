@@ -20,7 +20,11 @@ const userSchema = new mongoose.Schema({
     }
 });
 
-userSchema.static.createUser=async function createUser({name, email,password,gender,age}){
+/**
+ * SignUp USer CREATEING USER
+ */
+userSchema.statics.createUser=async function createUser({name, email,password,gender,age}){
+    
     try {
         if (!validator.isEmail(email)) {
             throw new Error("Invalid Email", { statusCode: 406 });
@@ -33,7 +37,7 @@ userSchema.static.createUser=async function createUser({name, email,password,gen
         }
       
         if (!validator.isStrongPassword(password)) {
-            throw Error("Password Not Strong", { statusCode: 406 });
+            throw new  Error("Password Not Strong", { statusCode: 406 });
         }
         //storing password
         const salt = bcryptjs.genSaltSync(12);
@@ -49,5 +53,46 @@ userSchema.static.createUser=async function createUser({name, email,password,gen
         return ;
     }
 }
+
+/**
+ * Signin user
+ */
+userSchema.statics.signin = async function signin({ email, password }) {
+    //Email Validation
+    if (!validator.isEmail(email)) {
+        throw new Error("Invalid Email", { statusCode: 406 });
+    }
+    try {
+        //finging user
+        const user = await this.findOne({ email: email }).select('_id password user.name');
+        if (!user) {
+            //user doesnot exist 
+            throw new Error("User doesn't Exist", { statusCode: 404 });
+        }
+        if (!bcryptjs.compareSync(password, user.password)) {
+            //passwords doesnot matched
+            throw new Error("Incorrect Password", { statusCode: 406 });
+        }
+        return { name:user.user.name, _id: user._id };
+    } catch (error) {
+        throw new Error(error.message, { statusCode: 500 });
+    }
+
+}
+/**
+ * Find User data
+ */
+/* findUser function for finding user from DB */
+userSchema.statics.findUser = async function findUser({ email }) {
+    try {
+        return this
+            .findOne({ email }, { _id: 0, password: 0, email: 0, __v: 0, })
+            .exec()
+
+    } catch (error) {
+        throw new Error("User Not Found", { StatusCode: 404 });
+    }
+}
+
 
 module.exports = mongoose.model('user', userSchema);
